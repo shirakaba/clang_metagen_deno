@@ -13,7 +13,42 @@ const index = new CXIndex(false);
 // const tu = index.parseTranslationUnit(foundationUmbrella);
 // const tu = index.parseTranslationUnit(foundationUmbrella, ["-fmodules"]);
 const tu = index.parseTranslationUnit(foundationUmbrella, [
-  "-F/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/System/Library/Frameworks",
+  "-Xclang",
+
+  // You can determine this path using: xcrun --sdk iphoneos --show-sdk-path
+  "-isysroot",
+  "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk",
+
+  // Doesn't seem to be necessary. Found in an unrelated project.
+  // "-arch", "arm64",
+
+  "-x",
+  "objective-c",
+
+  "-fno-objc-arc",
+  "-fmodule-maps",
+  "-ferror-limit=0",
+
+  "-Wno-unknown-pragmas",
+  "-Wno-ignored-attributes",
+  "-Wno-nullability-completeness",
+  "-Wno-expansion-to-defined",
+
+  "-std=gnu99",
+  // This is the iPhone simulator I have installed. Your version may
+  // differ.
+  "-target",
+  "arm64-apple-ios16.2",
+
+  // The below headers I guessed myself. I guess the metadata generator
+  // links and includes via calling the clang APIs rather than passing
+  // these flags.
+  //
+  // Include the Foundation umbrella header.
+  "-I/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks/Foundation.framework/Headers",
+  "-I/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/usr/include",
+  // Pass the Frameworks directory.
+  "-F/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/System/Library/Frameworks",
 ]);
 
 const files: CXFile[] = [];
