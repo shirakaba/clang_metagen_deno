@@ -1,6 +1,6 @@
 {
   "lock": true,
   "tasks": {
-    "start": "LIBCLANG_PATH=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib deno run --unstable --allow-env=LIBCLANG_PATH --allow-ffi src/index.ts"
+    "start": "LIBCLANG_PATH=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib deno run --unstable --allow-env=LIBCLANG_PATH --allow-ffi --allow-write=metadata.json src/index.ts"
   }
 }
