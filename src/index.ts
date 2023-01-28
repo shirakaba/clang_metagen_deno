@@ -61,32 +61,32 @@ tu.getInclusions((file, stack) => {
 
 // https://github.com/NativeScript/ios/blob/01efe3593dac3aec9adb6033c1211651136f2bb0/metadata-generator/src/Meta/MetaFactory.cpp#L116
 
-const nsstr = files[61];
-// nsstr.tu.tokenize()
-const cursor = nsstr.tu.getCursor();
-cursor.visitChildren((cursor, parent) => {
-  // if (["EnumDecl", "EnumConstantDecl"].includes(cursor.getKindSpelling())) {
-  // }
-  
-  switch (cursor.getKindSpelling()) {
-    case "VarDecl":
-      // console.log(
-      //   `[${cursor.getKindSpelling()}] ${cursor.getSpelling()} ${cursor.getPrettyPrinted()}`
-      // );
-      fromVar(cursor);
-      break;
+files.forEach((file) => {
+  const cursor = file.tu.getCursor();
+  cursor.visitChildren((cursor, parent) => {
+    // if (["EnumDecl", "EnumConstantDecl"].includes(cursor.getKindSpelling())) {
+    // }
 
-    default:
-      break;
-  }
-  // if(cursor.getDisplayName().includes("NSStringTransform")){
-  // console.log("displayName: ", cursor.getDisplayName());
-  // console.log("getSpelling:", cursor.getType()?.getSpelling());
-  // console.log("getCanonicalType:", cursor.getType()?.getCanonicalType().getSpelling());
-  // console.log("getTypedefName:", cursor.getType()?.getTypedefName());
-  // console.log("getNamedType:", cursor.getType()?.getNamedType());
-  // }
-  return CXChildVisitResult.CXChildVisit_Continue;
+    switch (cursor.getKindSpelling()) {
+      case "VarDecl":
+        // console.log(
+        //   `[${cursor.getKindSpelling()}] ${cursor.getSpelling()} ${cursor.getPrettyPrinted()}`
+        // );
+        fromVar(cursor);
+        break;
+
+      default:
+        break;
+    }
+    // if(cursor.getDisplayName().includes("NSStringTransform")){
+    // console.log("displayName: ", cursor.getDisplayName());
+    // console.log("getSpelling:", cursor.getType()?.getSpelling());
+    // console.log("getCanonicalType:", cursor.getType()?.getCanonicalType().getSpelling());
+    // console.log("getTypedefName:", cursor.getType()?.getTypedefName());
+    // console.log("getNamedType:", cursor.getType()?.getNamedType());
+    // }
+    return CXChildVisitResult.CXChildVisit_Continue;
+  });
 });
 
 function fromVar(cursor: CXCursor) {
@@ -95,15 +95,14 @@ function fromVar(cursor: CXCursor) {
   // }
 
   const initializer = cursor.getVariableDeclarationInitializer();
-  if(!initializer){
+  if (!initializer) {
     // Evaluate() will fail if there is no initializer.
     return;
   }
 
   const evValue = cursor.Evaluate();
-  console.log(`evValue.getKind() ${evValue.getKind()}`);
   let value = 0;
-  switch(evValue.getKind()){
+  switch (evValue.getKind()) {
     case CXEvalResultKind.CXEval_Int:
       value = evValue.getAsInt();
       break;
@@ -111,11 +110,14 @@ function fromVar(cursor: CXCursor) {
       value = evValue.getAsDouble();
       break;
     default:
-      throw new Error(`Unsupported CXEvalResultKind: ${evValue.getKind()}`);
+      // throw new Error(`Unsupported CXEvalResultKind: ${evValue.getKind()}`);
+      // ignore
+      break;
   }
 
   console.log(
-    `[${cursor.getKindSpelling()}] ${cursor.getSpelling()} ${cursor.getPrettyPrinted()} evValue ${value}`
+    // `[${cursor.getKindSpelling()}] ${cursor.getSpelling()} ${cursor.getPrettyPrinted()} evValue ${value}`
+    `[${cursor.getKindSpelling()}] ${cursor.getSpelling()} evValue ${value}`
   );
 }
 
