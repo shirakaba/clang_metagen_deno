@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Deno",
+      "type": "pwa-node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "runtimeExecutable": "/Users/jamie/.deno/bin/deno",
+      "env": {
+        "LIBCLANG_PATH": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib"
+      },
+      "runtimeArgs": ["run", "--unstable", "--allow-env=LIBCLANG_PATH", "--allow-ffi", "--inspect-brk", "-A", "src/index.ts"],
+      "attachSimplePort": 9229
+    }
+  ]
+}
