@@ -139,15 +139,13 @@ export function generateFrameworkMetadata(
     "-Wno-expansion-to-defined",
 
     "-std=gnu99",
-    // This is the iPhone simulator I have installed. Your version may
-    // differ.
+    // This is the iPhone simulator I have installed. Your version may differ.
     "-target",
     "arm64-apple-ios16.2",
 
-    // The below headers I guessed myself. I guess the metadata generator
-    // links and includes via calling the clang APIs rather than passing
-    // these flags.
-    //
+    // The below headers I guessed myself. I guess the metadata generator links
+    // and includes via calling the clang APIs rather than passing these flags.
+
     // Include the framework's umbrella header.
     `-I${sdk}/System/Library/Frameworks/${framework}.framework/Headers`,
     // Include the system headers (CoreFoundation, for example, requires them).
