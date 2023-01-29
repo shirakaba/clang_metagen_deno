@@ -139,7 +139,8 @@ export function generateFrameworkMetadata(
   framework: string,
   umbrella?: string
 ) {
-  const foundationUmbrella = `${sdk}/System/Library/Frameworks/${framework}.framework/Headers/${
+  const frameworksDir = `${sdk}/System/Library/Frameworks`;
+  const foundationUmbrella = `${frameworksDir}/${framework}.framework/Headers/${
     umbrella ?? framework
   }.h`;
 
@@ -151,9 +152,6 @@ export function generateFrameworkMetadata(
     // You can determine this path using: xcrun --sdk iphoneos --show-sdk-path
     "-isysroot",
     sdk,
-
-    // Doesn't seem to be necessary. Found in an unrelated project.
-    // "-arch", "arm64",
 
     "-x",
     "objective-c",
@@ -168,19 +166,19 @@ export function generateFrameworkMetadata(
     "-Wno-expansion-to-defined",
 
     "-std=gnu99",
+
     // This is the iPhone simulator I have installed. Your version may differ.
     "-target",
     "arm64-apple-ios16.2",
 
-    // The below headers I guessed myself. I guess the metadata generator links
-    // and includes via calling the clang APIs rather than passing these flags.
-
     // Include the framework's umbrella header.
-    `-I${sdk}/System/Library/Frameworks/${framework}.framework/Headers`,
+    `-I${frameworksDir}/${framework}.framework/Headers`,
+
     // Include the system headers (CoreFoundation, for example, requires them).
     `-I${sdk}/usr/include`,
+
     // Pass the Frameworks directory.
-    `-F${sdk}/System/Library/Frameworks`,
+    `-F${frameworksDir}`,
   ]);
   const meta = generate(tu.getCursor());
   tu.dispose();
@@ -240,7 +238,6 @@ export function generate(cursor: CXCursor) {
 }
 
 export function processCXType(type: CXType): TypeMetadata {
-  // type.getCanonicalType().get
   return {
     name: type.getSpelling(),
     kind: type.getKindSpelling(),
