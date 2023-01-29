@@ -15,86 +15,6 @@ export interface TypeMetadata {
   size: number;
 }
 
-export interface VarDecl {
-  name: string;
-  type: TypeMetadata;
-  value: string | null;
-}
-
-export interface ParameterDecl {
-  name: string;
-  type: TypeMetadata;
-}
-
-export interface MethodDecl {
-  name: string;
-  parameters: ParameterDecl[];
-  result: TypeMetadata;
-}
-
-export interface PropertyDecl {
-  name: string;
-  type: TypeMetadata;
-}
-
-export interface ClassRef {
-  name: string;
-  module: string;
-}
-
-export interface InterfaceDecl {
-  name: string;
-  super: ClassRef | null;
-  properties: PropertyDecl[];
-  instanceMethods: MethodDecl[];
-  classMethods: MethodDecl[];
-}
-
-export interface CategoryDecl {
-  name: string;
-  interface: ClassRef;
-  properties: PropertyDecl[];
-  instanceMethods: MethodDecl[];
-  classMethods: MethodDecl[];
-}
-
-export interface ProtocolDecl {
-  name: string;
-  protocols: ClassRef[];
-  properties: PropertyDecl[];
-  instanceMethods: MethodDecl[];
-  classMethods: MethodDecl[];
-}
-
-export interface EnumConstantDecl {
-  name: string;
-  value: string;
-}
-
-export interface EnumDecl {
-  name: string;
-  type: TypeMetadata;
-  constants: EnumConstantDecl[];
-}
-
-export interface FunctionDecl {
-  name: string;
-  parameters: ParameterDecl[];
-  result: TypeMetadata;
-}
-
-export interface StructFieldDecl {
-  name: string;
-  type: TypeMetadata;
-  offset: number;
-}
-
-export interface StructDecl {
-  name: string;
-  fields: StructFieldDecl[];
-  size: number;
-}
-
 export interface Metadata {
   varDecls: VarDecl[];
   enumDecls: EnumDecl[];
@@ -103,6 +23,115 @@ export interface Metadata {
   interfaceDecls: InterfaceDecl[];
   categoryDecls: CategoryDecl[];
   protocolDecls: ProtocolDecl[];
+}
+
+/** @see https://clang.llvm.org/doxygen/classclang_1_1NamedDecl.html */
+export interface NamedDecl {
+  name: string;
+}
+
+/**
+ * Our representation of CXCursor - we generate a 'name' field from its 'kind'
+ * field.
+ * @see https://clang.llvm.org/doxygen/structCXCursor.html
+ */
+export interface CXCursorRepresentation {
+  name: string;
+}
+
+/** @see https://clang.llvm.org/doxygen/classclang_1_1VarDecl.html */
+export interface VarDecl extends NamedDecl {
+  type: TypeMetadata;
+  value: string | null;
+}
+
+/**
+ * @see https://clang.llvm.org/doxygen/classclang_1_1ObjCTypeParamDecl.html
+ * @see https://clang.llvm.org/doxygen/classclang_1_1ParmVarDecl.html
+ */
+export interface ParameterDecl extends NamedDecl {
+  type: TypeMetadata;
+}
+
+/**
+ * @see https://clang.llvm.org/doxygen/classclang_1_1ObjCMethodDecl.html
+ * @see https://clang.llvm.org/doxygen/classclang_1_1CXXMethodDecl.html
+ */
+export interface MethodDecl extends NamedDecl {
+  parameters: ParameterDecl[];
+  result: TypeMetadata;
+}
+
+/** @see https://clang.llvm.org/doxygen/classclang_1_1ObjCPropertyDecl.html */
+export interface PropertyDecl extends NamedDecl {
+  type: TypeMetadata;
+}
+
+/**
+ * Represents CXCursor_ObjCClassRef or CXCursor_ObjCSuperClassRef.
+ * @see https://clang.llvm.org/doxygen/Index_8h_source.html#l01137
+ */
+export interface ClassRef extends CXCursorRepresentation {
+  module: string;
+}
+
+/** @see https://clang.llvm.org/doxygen/classclang_1_1ObjCInterfaceDecl.html */
+export interface InterfaceDecl extends NamedDecl {
+  super: ClassRef | null;
+  properties: PropertyDecl[];
+  instanceMethods: MethodDecl[];
+  classMethods: MethodDecl[];
+}
+
+/** @see https://clang.llvm.org/doxygen/classclang_1_1ObjCCategoryDecl.html */
+export interface CategoryDecl extends NamedDecl {
+  interface: ClassRef;
+  properties: PropertyDecl[];
+  instanceMethods: MethodDecl[];
+  classMethods: MethodDecl[];
+}
+
+/** @see https://clang.llvm.org/doxygen/classclang_1_1ObjCProtocolDecl.html */
+export interface ProtocolDecl extends NamedDecl {
+  protocols: ClassRef[];
+  properties: PropertyDecl[];
+  instanceMethods: MethodDecl[];
+  classMethods: MethodDecl[];
+}
+
+/** @see https://clang.llvm.org/doxygen/classclang_1_1EnumConstantDecl.html */
+export interface EnumConstantDecl extends NamedDecl {
+  value: string;
+}
+
+/** @see https://clang.llvm.org/doxygen/classclang_1_1EnumDecl.html */
+export interface EnumDecl extends NamedDecl {
+  type: TypeMetadata;
+  constants: EnumConstantDecl[];
+}
+
+/** @see https://clang.llvm.org/doxygen/classclang_1_1FunctionDecl.html */
+export interface FunctionDecl extends NamedDecl {
+  parameters: ParameterDecl[];
+  result: TypeMetadata;
+}
+
+/**
+ * Represents CXCursor_StructFieldDecl.
+ * @see https://clang.llvm.org/doxygen/Index_8h_source.html#l01062
+ */
+export interface StructFieldDecl extends CXCursorRepresentation {
+  type: TypeMetadata;
+  offset: number;
+}
+
+/**
+ * Represents CXCursor_StructDecl.
+ * @see https://clang.llvm.org/doxygen/Index_8h_source.html#l01062
+ */
+export interface StructDecl extends CXCursorRepresentation {
+  fields: StructFieldDecl[];
+  size: number;
 }
 
 export function generateFrameworkMetadata(
