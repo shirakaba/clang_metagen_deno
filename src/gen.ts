@@ -148,8 +148,9 @@ export function generateFrameworkMetadata(
     // links and includes via calling the clang APIs rather than passing
     // these flags.
     //
-    // Include the Foundation umbrella header.
-    `-I${sdk}/System/Library/Frameworks/Foundation.framework/Headers`,
+    // Include the framework's umbrella header.
+    `-I${sdk}/System/Library/Frameworks/${framework}.framework/Headers`,
+    // Include the system headers (CoreFoundation, for example, requires them).
     `-I${sdk}/usr/include`,
     // Pass the Frameworks directory.
     `-F${sdk}/System/Library/Frameworks`,
