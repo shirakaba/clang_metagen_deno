@@ -5,6 +5,8 @@ import {
   CXType,
   CXEvalResultKind,
   CXIndex,
+  AvailabilityEntry,
+  CXObjCPropertyAttrKind,
 } from "../deps.ts";
 
 export interface TypeMetadata {
@@ -13,6 +15,13 @@ export interface TypeMetadata {
   canonical: string;
   canonicalKind: string;
   size: number;
+  elementType?: TypeMetadata;
+  pointeeType?: TypeMetadata;
+  arraySize?: number;
+  block?: {
+    returnType?: TypeMetadata;
+    parameters: TypeMetadata[];
+  };
 }
 
 export interface Metadata {
@@ -41,8 +50,9 @@ export interface CXCursorRepresentation {
 
 /** @see https://clang.llvm.org/doxygen/classclang_1_1VarDecl.html */
 export interface VarDecl extends NamedDecl {
+  file: string;
   type: TypeMetadata;
-  value: string | null;
+  value: string | number | bigint | null;
 }
 
 /**
@@ -65,6 +75,12 @@ export interface MethodDecl extends NamedDecl {
 /** @see https://clang.llvm.org/doxygen/classclang_1_1ObjCPropertyDecl.html */
 export interface PropertyDecl extends NamedDecl {
   type: TypeMetadata;
+  getter: string;
+  setter: string;
+  static: boolean;
+  readonly: boolean;
+  nonatomic: boolean;
+  weak: boolean;
 }
 
 /**
@@ -77,26 +93,32 @@ export interface ClassRef extends CXCursorRepresentation {
 
 /** @see https://clang.llvm.org/doxygen/classclang_1_1ObjCInterfaceDecl.html */
 export interface InterfaceDecl extends NamedDecl {
+  file: string;
   super: ClassRef | null;
   properties: PropertyDecl[];
   instanceMethods: MethodDecl[];
   classMethods: MethodDecl[];
+  availability: AvailabilityEntry[];
 }
 
 /** @see https://clang.llvm.org/doxygen/classclang_1_1ObjCCategoryDecl.html */
 export interface CategoryDecl extends NamedDecl {
+  file: string;
   interface: ClassRef;
   properties: PropertyDecl[];
   instanceMethods: MethodDecl[];
   classMethods: MethodDecl[];
+  availability: AvailabilityEntry[];
 }
 
 /** @see https://clang.llvm.org/doxygen/classclang_1_1ObjCProtocolDecl.html */
 export interface ProtocolDecl extends NamedDecl {
+  file: string;
   protocols: ClassRef[];
   properties: PropertyDecl[];
   instanceMethods: MethodDecl[];
   classMethods: MethodDecl[];
+  availability: AvailabilityEntry[];
 }
 
 /** @see https://clang.llvm.org/doxygen/classclang_1_1EnumConstantDecl.html */
@@ -106,14 +128,17 @@ export interface EnumConstantDecl extends NamedDecl {
 
 /** @see https://clang.llvm.org/doxygen/classclang_1_1EnumDecl.html */
 export interface EnumDecl extends NamedDecl {
+  file: string;
   type: TypeMetadata;
   constants: EnumConstantDecl[];
 }
 
 /** @see https://clang.llvm.org/doxygen/classclang_1_1FunctionDecl.html */
 export interface FunctionDecl extends NamedDecl {
+  file: string;
   parameters: ParameterDecl[];
   result: TypeMetadata;
+  availability: AvailabilityEntry[];
 }
 
 /**
@@ -130,6 +155,7 @@ export interface StructFieldDecl extends CXCursorRepresentation {
  * @see https://clang.llvm.org/doxygen/Index_8h_source.html#l01062
  */
 export interface StructDecl extends CXCursorRepresentation {
+  file: string;
   fields: StructFieldDecl[];
   size: number;
 }
@@ -168,8 +194,9 @@ export function generateFrameworkMetadata(
     "-std=gnu99",
 
     // This is the iPhone simulator I have installed. Your version may differ.
-    "-target",
-    "arm64-apple-ios16.2",
+    // NOTE(DjDeveloperr): doesn't seem to be needed
+    // "-target",
+    // "arm64-apple-ios16.2",
 
     // Include the framework's umbrella header.
     `-I${frameworksDir}/${framework}.framework/Headers`,
@@ -244,6 +271,29 @@ export function processCXType(type: CXType): TypeMetadata {
     canonical: type.getCanonicalType().getSpelling(),
     canonicalKind: type.getCanonicalType().getKindSpelling(),
     size: type.getSizeOf(),
+    elementType: type.getArrayElementType()
+      ? processCXType(type.getArrayElementType()!)
+      : undefined,
+    pointeeType: type.getPointeeType()
+      ? processCXType(type.getPointeeType()!)
+      : undefined,
+    arraySize: type.getArraySize() < 0 ? undefined : type.getArraySize(),
+    block:
+      type.getCanonicalType().getKindSpelling() === 'BlockPointer'
+        ? {
+            returnType: type.getPointeeType()?.getResultType()
+              ? processCXType(type.getPointeeType()?.getResultType()!)
+              : undefined,
+            parameters: Array.from(
+              {
+                length: type.getPointeeType()?.getNumberOfArgumentTypes() ?? 0
+              },
+              (_, i) => {
+                return processCXType(type.getPointeeType()!.getArgumentType(i)!)
+              }
+            )
+          }
+        : undefined,
   };
 }
 
@@ -254,13 +304,17 @@ export function processVarDecl(cursor: CXCursor, metadata: Metadata) {
   }
 
   const evValue = cursor.Evaluate();
-  let value: string | null = null;
+  let value: string | number | bigint | null = null;
   switch (evValue.getKind()) {
     case CXEvalResultKind.CXEval_Int:
-      value = evValue.getAsInt().toString();
+      value = evValue.getAsInt();
       break;
     case CXEvalResultKind.CXEval_Float:
-      value = evValue.getAsDouble().toString();
+      value = evValue.getAsDouble();
+      break;
+    case CXEvalResultKind.CXEval_ObjCStrLiteral:
+    case CXEvalResultKind.CXEval_StrLiteral:
+      value = evValue.getAsStr();
       break;
     default:
       // ignore
@@ -268,6 +322,7 @@ export function processVarDecl(cursor: CXCursor, metadata: Metadata) {
   }
 
   const varDecl: VarDecl = {
+    file: cursor.getLocation().getFileLocation().file.getName(),
     name: cursor.getSpelling(),
     type: processCXType(cursor.getType()!),
     value,
@@ -277,12 +332,17 @@ export function processVarDecl(cursor: CXCursor, metadata: Metadata) {
 }
 
 export function processInterface(cursor: CXCursor, metadata: Metadata) {
+  const avail = cursor.getPlatformAvailability();
+  if (avail.alwaysUnavailable || avail.alwaysDeprecated) return;
+  
   const interfaceDecl: InterfaceDecl = {
+    file: cursor.getLocation().getFileLocation().file.getName(),
     name: cursor.getSpelling(),
     super: null,
     properties: [],
     instanceMethods: [],
     classMethods: [],
+    availability: avail.availability,
   };
 
   cursor.visitChildren((cursor, _) => {
@@ -317,9 +377,18 @@ export function processInterface(cursor: CXCursor, metadata: Metadata) {
 }
 
 export function processProperty(cursor: CXCursor, properties: PropertyDecl[]) {
+  const attrs = cursor.getObjCPropertyAttributes();
   const propertyDecl: PropertyDecl = {
     name: cursor.getSpelling(),
     type: processCXType(cursor.getType()!),
+    getter: cursor.getObjCPropertyGetterName(),
+    setter: cursor.getObjCPropertySetterName(),
+    static: (attrs & CXObjCPropertyAttrKind.CXObjCPropertyAttr_class) !== 0,
+    readonly:
+      (attrs & CXObjCPropertyAttrKind.CXObjCPropertyAttr_readonly) !== 0,
+    nonatomic:
+      (attrs & CXObjCPropertyAttrKind.CXObjCPropertyAttr_nonatomic) !== 0,
+    weak: (attrs & CXObjCPropertyAttrKind.CXObjCPropertyAttr_weak) !== 0,
   };
 
   properties.push(propertyDecl);
@@ -349,9 +418,13 @@ export function processCategory(cursor: CXCursor, metadata: Metadata) {
   if (metadata.categoryDecls.find((v) => v.name === cursor.getSpelling())) {
     return;
   }
+  
+  const avail = cursor.getPlatformAvailability();
+  if (avail.alwaysUnavailable || avail.alwaysDeprecated) return;
 
   const categoryDecl: CategoryDecl = {
     name: cursor.getSpelling(),
+    file: cursor.getLocation().getFileLocation().file.getName(),
     interface: {
       name: "",
       module: "",
@@ -359,6 +432,7 @@ export function processCategory(cursor: CXCursor, metadata: Metadata) {
     properties: [],
     instanceMethods: [],
     classMethods: [],
+    availability: avail.availability,
   };
 
   cursor.visitChildren((cursor, _) => {
@@ -391,12 +465,17 @@ export function processCategory(cursor: CXCursor, metadata: Metadata) {
 }
 
 export function processProtocol(cursor: CXCursor, metadata: Metadata) {
+  const avail = cursor.getPlatformAvailability();
+  if (avail.alwaysUnavailable || avail.alwaysDeprecated) return;
+  
   const protocolDecl: ProtocolDecl = {
     name: cursor.getSpelling(),
+    file: cursor.getLocation().getFileLocation().file.getName(),
     protocols: [],
     properties: [],
     instanceMethods: [],
     classMethods: [],
+    availability: avail.availability,
   };
 
   cursor.visitChildren((cursor, _) => {
@@ -433,6 +512,7 @@ export function processProtocol(cursor: CXCursor, metadata: Metadata) {
 export function processEnum(cursor: CXCursor, metadata: Metadata) {
   const enumDecl: EnumDecl = {
     name: cursor.getSpelling() || cursor.getType()?.getSpelling() || "",
+    file: cursor.getLocation().getFileLocation().file.getName(),
     type: processCXType(cursor.getEnumDeclarationIntegerType()!),
     constants: [],
   };
@@ -450,6 +530,7 @@ export function processEnum(cursor: CXCursor, metadata: Metadata) {
 
       if (enumDecl.name === "") {
         metadata.varDecls.push({
+          file: enumDecl.file,
           name: constant.name,
           type: enumDecl.type,
           value: constant.value,
@@ -468,8 +549,12 @@ export function processEnum(cursor: CXCursor, metadata: Metadata) {
 }
 
 export function processFunction(cursor: CXCursor, metadata: Metadata) {
+  const avail = cursor.getPlatformAvailability();
+  if (avail.alwaysUnavailable || avail.alwaysDeprecated) return;
+
   const functionDecl: FunctionDecl = {
     name: cursor.getSpelling(),
+    file: cursor.getLocation().getFileLocation().file.getName(),
     parameters: [],
     result: processCXType(cursor.getResultType()!),
   };
@@ -490,9 +575,17 @@ export function processFunction(cursor: CXCursor, metadata: Metadata) {
 export function processStruct(cursor: CXCursor, metadata: Metadata) {
   const structDecl: StructDecl = {
     name: cursor.getSpelling(),
+    file: cursor.getLocation().getFileLocation().file.getName(),
     fields: [],
     size: cursor.getType()?.getSizeOf() || 0,
   };
+  
+  if (structDecl.name === '') {
+    structDecl.name = cursor.getType()?.getSpelling() || '';
+    if (structDecl.name.startsWith('struct ')) {
+      structDecl.name = structDecl.name.substring(7);
+    }
+  }
 
   cursor.visitChildren((cursor, _) => {
     if (cursor.kind === CXCursorKind.CXCursor_FieldDecl) {
