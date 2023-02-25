@@ -1,12 +1,12 @@
 import {
+  AvailabilityEntry,
+  CXChildVisitResult,
   CXCursor,
   CXCursorKind,
-  CXChildVisitResult,
-  CXType,
   CXEvalResultKind,
   CXIndex,
-  AvailabilityEntry,
   CXObjCPropertyAttrKind,
+  CXType,
 } from "../deps.ts";
 
 export interface TypeMetadata {
@@ -163,7 +163,7 @@ export interface StructDecl extends CXCursorRepresentation {
 export function generateFrameworkMetadata(
   sdk: string,
   framework: string,
-  umbrella?: string
+  umbrella?: string,
 ) {
   const frameworksDir = `${sdk}/System/Library/Frameworks`;
   const foundationUmbrella = `${frameworksDir}/${framework}.framework/Headers/${
@@ -278,22 +278,21 @@ export function processCXType(type: CXType): TypeMetadata {
       ? processCXType(type.getPointeeType()!)
       : undefined,
     arraySize: type.getArraySize() < 0 ? undefined : type.getArraySize(),
-    block:
-      type.getCanonicalType().getKindSpelling() === 'BlockPointer'
-        ? {
-            returnType: type.getPointeeType()?.getResultType()
-              ? processCXType(type.getPointeeType()?.getResultType()!)
-              : undefined,
-            parameters: Array.from(
-              {
-                length: type.getPointeeType()?.getNumberOfArgumentTypes() ?? 0
-              },
-              (_, i) => {
-                return processCXType(type.getPointeeType()!.getArgumentType(i)!)
-              }
-            )
-          }
-        : undefined,
+    block: type.getCanonicalType().getKindSpelling() === "BlockPointer"
+      ? {
+        returnType: type.getPointeeType()?.getResultType()
+          ? processCXType(type.getPointeeType()?.getResultType()!)
+          : undefined,
+        parameters: Array.from(
+          {
+            length: type.getPointeeType()?.getNumberOfArgumentTypes() ?? 0,
+          },
+          (_, i) => {
+            return processCXType(type.getPointeeType()!.getArgumentType(i)!);
+          },
+        ),
+      }
+      : undefined,
   };
 }
 
@@ -334,7 +333,7 @@ export function processVarDecl(cursor: CXCursor, metadata: Metadata) {
 export function processInterface(cursor: CXCursor, metadata: Metadata) {
   const avail = cursor.getPlatformAvailability();
   if (avail.alwaysUnavailable || avail.alwaysDeprecated) return;
-  
+
   const interfaceDecl: InterfaceDecl = {
     file: cursor.getLocation().getFileLocation().file.getName(),
     name: cursor.getSpelling(),
@@ -418,7 +417,7 @@ export function processCategory(cursor: CXCursor, metadata: Metadata) {
   if (metadata.categoryDecls.find((v) => v.name === cursor.getSpelling())) {
     return;
   }
-  
+
   const avail = cursor.getPlatformAvailability();
   if (avail.alwaysUnavailable || avail.alwaysDeprecated) return;
 
@@ -467,7 +466,7 @@ export function processCategory(cursor: CXCursor, metadata: Metadata) {
 export function processProtocol(cursor: CXCursor, metadata: Metadata) {
   const avail = cursor.getPlatformAvailability();
   if (avail.alwaysUnavailable || avail.alwaysDeprecated) return;
-  
+
   const protocolDecl: ProtocolDecl = {
     name: cursor.getSpelling(),
     file: cursor.getLocation().getFileLocation().file.getName(),
@@ -557,6 +556,7 @@ export function processFunction(cursor: CXCursor, metadata: Metadata) {
     file: cursor.getLocation().getFileLocation().file.getName(),
     parameters: [],
     result: processCXType(cursor.getResultType()!),
+    availability: avail.availability,
   };
 
   for (let i = 0; i < cursor.getNumberOfArguments(); i++) {
@@ -579,10 +579,10 @@ export function processStruct(cursor: CXCursor, metadata: Metadata) {
     fields: [],
     size: cursor.getType()?.getSizeOf() || 0,
   };
-  
-  if (structDecl.name === '') {
-    structDecl.name = cursor.getType()?.getSpelling() || '';
-    if (structDecl.name.startsWith('struct ')) {
+
+  if (structDecl.name === "") {
+    structDecl.name = cursor.getType()?.getSpelling() || "";
+    if (structDecl.name.startsWith("struct ")) {
       structDecl.name = structDecl.name.substring(7);
     }
   }
