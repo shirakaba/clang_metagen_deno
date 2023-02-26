@@ -1,12 +1,13 @@
 export {
-  CXEvalResultKind,
-  CXVisitorResult,
-} from "https://deno.land/x/libclang@1.0.0-beta.4/include/typeDefinitions.ts";
-export {
-  CXIndex,
-  CXFile,
+  type AvailabilityEntry,
+  CXChildVisitResult,
   CXCursor,
   CXCursorKind,
+  CXEvalResultKind,
+  CXFile,
+  CXIndex,
+  CXObjCPropertyAttrKind,
   type CXType,
-} from "https://deno.land/x/libclang@1.0.0-beta.4/mod.ts";
-export { CXChildVisitResult } from "https://deno.land/x/libclang@1.0.0-beta.4/include/typeDefinitions.ts";
+  CXVisitorResult,
+} from "https://deno.land/x/libclang@1.0.0-beta.8/mod.ts";
+export { fromFileUrl, toFileUrl } from "https://deno.land/std@0.178.0/path/mod.ts";
