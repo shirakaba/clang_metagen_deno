@@ -1,6 +1,8 @@
 {
   "lock": true,
   "tasks": {
-    "start": "LIBCLANG_PATH=/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib deno run --unstable --allow-env=LIBCLANG_PATH --allow-ffi --allow-write=metadata.json src/index.ts"
+    "parse_header": "deno run -A --unstable examples/parse_header.ts",
+    "foundation_metadata": "deno run --unstable --allow-env=LIBCLANG_PATH --allow-ffi --allow-write=metadata.json examples/foundation_metadata.ts",
+    "gen": "deno run -A --unstable main.ts"
   }
 }
